@@ -22,7 +22,6 @@ This is the root and inception of the Republic of Ocean
 If you're a developer and want to contribute to, or want to utilize this marketplace's code in your projects, then keep on reading.
 
 - [🏄 Get Started](#-get-started)
-  - [🏖 Remote Ocean: Pacific](#-remote-ocean-pacific)
   - [🐳 Use with Barge](#-use-with-barge)
   - [⛵️ Environment Variables](#️-environment-variables)
     - [Client](#client)
