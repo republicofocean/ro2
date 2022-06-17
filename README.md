@@ -11,7 +11,7 @@ This is the root and inception of the Republic of Ocean
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-7b1173.svg?style=flat-square)](https://github.com/prettier/prettier)
 [![js oceanprotocol](https://img.shields.io/badge/js-oceanprotocol-7b1173.svg)](https://github.com/oceanprotocol/eslint-config-oceanprotocol)
 
-<img width="1218" alt="Republic of Ocean" src="https://i.ibb.co/GJh69Tr/Screenshot-2022-06-17-at-5-22-12-PM.png">
+<img width="1218" alt="Republic of Ocean" src="https://serving.photos.photobox.com/30031721d7b04c9f68995bc9bcf2240ff05d55eda919a75303c6b6cec171dab393d75876.jpg">
 
 ---
 
