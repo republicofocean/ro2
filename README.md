@@ -2,20 +2,16 @@
 This is the root and inception of the Republic of Ocean
 ----
 
-[![banner](https://raw.githubusercontent.com/ro2/art/master/github/repo-banner%402x.png)](https://www.republicofocean.com)
+<h1 align="center">Republic of Ocean</h1>
 
-<h1 align="center">Commons</h1>
-
-> 🏄‍♀️ The audio data marketplace.
+> 🏄‍♀️ At the intersection of Audio, Blockchain, Community & Data.
 > https://www.republicofocean.com/
 
 [![Build Status](https://travis-ci.com/ro2/commons.svg?branch=master)](https://travis-ci.com/oceanprotocol/commons)
-[![Maintainability](https://api.codeclimate.com/v1/badges/ed6e8212a8d294b6aa88/maintainability)](https://codeclimate.com/github/ro2/commons/maintainability)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/ed6e8212a8d294b6aa88/test_coverage)](https://codeclimate.com/github/ro2/commons/test_coverage)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-7b1173.svg?style=flat-square)](https://github.com/prettier/prettier)
 [![js oceanprotocol](https://img.shields.io/badge/js-oceanprotocol-7b1173.svg)](https://github.com/oceanprotocol/eslint-config-oceanprotocol)
 
-<img width="1218" alt="Commons UI" src="https://user-images.githubusercontent.com/90316/55874266-296ef080-5b92-11e9-8ac6-2423cb2a80fb.png">
+<img width="1218" alt="Republic of Ocean" src="https://i.ibb.co/GJh69Tr/Screenshot-2022-06-17-at-5-22-12-PM.png">
 
 ---
 
