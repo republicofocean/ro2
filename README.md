@@ -22,12 +22,6 @@ This is the root and inception of the Republic of Ocean
 If you're a developer and want to contribute to, or want to utilize this marketplace's code in your projects, then keep on reading.
 
 - [🏄 Get Started](#-get-started)
-  - [🐳 Use with Barge](#-use-with-barge)
-  - [⛵️ Environment Variables](#️-environment-variables)
-    - [Client](#client)
-    - [Server](#server)
-    - [Feature Switches](#feature-switches)
-    - [More Settings](#more-settings)
 - [👩‍🔬 Testing](#-testing)
   - [Unit Tests](#unit-tests)
   - [End-to-End Integration Tests](#end-to-end-integration-tests)
@@ -71,16 +65,16 @@ Wait for workflow execution to complete. Amazon Transcribe can take about 10-15 
 
 #### RSS Feed Step Function State Machine Lambda functions
  
-* **processPodcastRss**: Downloads the RSS file and parses it to determine the episodes to download. This function also leverages Amazon Comprehend's [**entity extraction**](https://docs.aws.amazon.com/comprehend/latest/dg/how-entities.html) feature for 2 use cases:
+* **processPodcastRss**: Downloads the RSS file and parses it to determine the episodes to download. This function also leverages Amazon Comprehend's [**entity extraction**] feature for 2 use cases:
 
 	* To compute an estimate of the number of speakers in each episode. We do this by using Amazon Comprehend to find people's names in each episode's abstract. We find that many podcast hosts like to mention their guest speakers’ names in the abstract. This helps us later when we use Amazon Transcribe to break out the transcription into multiple speakers. If no names are found in the abstract, we will assume the episode has a single speaker. 
 
-	* To build a domain-specific custom vocabulary list. If a podcast is about AWS, you will hear lots of expressions unique to the specific domain (e.g., EC2, S3) that are completely different from expressions found in a podcast about astronomy (e.g., Milky Way, Hubble). Providing a custom vocabulary list to Amazon Transcribe can help guide the service in identifying an audio segment that sounds like “easy too” to its actual meaning “EC2.” In this blog post, we automatically generate the custom vocabulary list by using the named entities extracted from episode abstracts to make Amazon Transcribe more domain aware. Keep in mind that this approach may not cover all jargon that could appear in the transcripts. To get more accurate transcriptions, you can complement this approach by drafting a list of common domain-specific terms so that you can construct a custom vocabulary list for Amazon Transcribe. 
+	* To build a domain-specific custom vocabulary list. If a podcast is about AWS, you will hear lots of expressions unique to the specific domain (e.g., EC2, S3) that are completely different from expressions found in a podcast about Web3 (e.g., Dapps, DEFI). Providing a custom vocabulary list to Amazon Transcribe can help guide the service in identifying an audio segment that sounds like “easy too” to its actual meaning “EC2.” In this blog post, we automatically generate the custom vocabulary list by using the named entities extracted from episode abstracts to make Amazon Transcribe more domain aware. Keep in mind that this approach may not cover all jargon that could appear in the transcripts. To get more accurate transcriptions, you can complement this approach by drafting a list of common domain-specific terms so that you can construct a custom vocabulary list for Amazon Transcribe. 
 
 
-* **createTranscribeVocabulary**: Creates a [**custom vocabulary**](https://docs.aws.amazon.com/transcribe/latest/dg/how-it-works.html#how-vocabulary) for the Amazon Transcribe jobs so it will better understand when an AWS/tech jargon is mentioned. The custom vocabulary is created using the method mentioned above. 
+* **createTranscribeVocabulary**: Creates a [**custom vocabulary**] for the Amazon Transcribe jobs so it will better understand when an AWS/tech jargon is mentioned. The custom vocabulary is created using the method mentioned above. 
 * **monitorTranscribeVocabulary**: Polls Amazon Transcribe to determine if the custom vocabulary creation has completed.
-* **createElasticsearchIndex**: Creates [**index mappings**](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html) in ElasticSearch
+* **createElasticsearchIndex**: Creates [**index mappings**] in ElasticSearch
 * **processPodcastItem**: Creates a child state machine execution for each episode while maintaining a maximum of 10 concurrent child processes. This function keeps track of how many processes are active and throttles the downstream calls once the maximum is hit. Amazon S3 is used to store additional state about each episode. 
 * **deleteTranscribeVocabulary**: Cleans up the custom vocabulary after the processing of all episodes is complete. Note that we added this step to minimize artifacts that stay around in your account after you run the demo application. However, when you build your own apps with Amazon Transcribe, you should consider keeping the custom vocabulary around for future processing jobs.
 
