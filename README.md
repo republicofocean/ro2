@@ -40,108 +40,66 @@ If you're a developer and want to contribute to, or want to utilize this marketp
 
 ## 🏄 Get Started
 
-This repo contains a client and a server, both written in TypeScript:
-
-- **client**: React app setup with [squid-js](https://github.com/oceanprotocol/squid-js), bootstrapped with [Create React App](https://github.com/facebook/create-react-app)
-- **server**: Node.js app, utilizing [Express](https://expressjs.com). The server provides various microservices, like remote file checking. The endpoints are documented in [server Readme](server/).
-
-To spin up both, the client and the server in a watch mode for local development, execute:
-
-```bash
-npm install
-npm start
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view the client in the browser. The page will reload if you make edits to files in either `./client` or `./server`.
-
-### 🐳 Use with Barge
-
-If you prefer to connect to locally running components instead of remote connections to Ocean's Nile network, you can spin up [`barge`](https://github.com/ro2/barge) and use a local Spree network:
-
-```bash
-git clone git@github.com:ro2/barge.git
-cd barge
-
-# startup with local Spree node
-./start_ocean.sh --no-commons
-```
-
-Then set [environment variables](#️-environment-variables) to use those local connections.
-
-Finally, you need to copy the generated contract artifacts out of the Docker container. To do this, execute this script in another terminal:
-
-```bash
-./scripts/keeper.sh
-```
-
-The script will wait for all contracts to be generated in the `keeper-contracts` Docker container, then will copy the artifacts in place.
-
-If you are on macOS, you need to additionally tweak your `/etc/hosts`. This is only required on macOS and is a [known limitation of Docker for Mac](https://docs.docker.com/docker-for-mac/networking/#known-limitations-use-cases-and-workarounds):
-
-```bash
-sudo vi /etc/hosts
-
-# add this line, and save
-127.0.0.1    aquarius
-```
+This repo can be deployed on AWS as a state machine, it uses a serverless architecture.
 
 
-### ⛵️ Environment Variables
+1. Navigate to the **RSS Step Functions State Machine** and click on the `RssStateMachineUrl`
 
-#### Client
+1. In the Step Functions console, create an execution using the **Start Execution** button and provide the input payload like below:
 
-The `./client/src/config.ts` file is setup to prioritize environment variables for setting each Ocean component endpoint.
+	```json
+	{
+	  "PodcastName": "DAO Podcast",
+	  "rss": "https://feeds.simplecast.com/GNuMtYW3",
+	  "maxEpisodesToProcess": 10,
+	  "dryrun": "FALSE"
+	}
+	```
 
-By setting environment variables, you can easily switch between networks the commons client connects to, without directly modifying `./client/src/config.ts`. This is helpful e.g. for local development so you don't accidentially commit changes to the config file.
+	> Note: You can choose a different podcast feed by changing the rss  input parameter.
+	> 
+	> The `maxEpisodesToProcess` input parameter lets you control the number of episodes to process from this feed. 
+	> 
+	> 	The `dryrun` flag will test the state machine without calling the AI functions. Leave is to FALSE to fully process the podcast.
 
-For local development, you can use a `.env.local` file. There's an example file with the most common network configurations preconfigured:
 
-```bash
-cp client/.env.local.example client/.env.local
+Wait for workflow execution to complete. Amazon Transcribe can take about 10-15 minutes to process the 10 episodes (note that there's a default soft limit of 10 concurrent jobs that may be increased per request). Note that you will be able to see results appear in the ElasticSearch index as soon as some executions of the child workflow **EpisodeStateMachine** completes, even while the parent **RssStateMachine** is still waiting on the rest of the epsidoes to finish. 
 
-# uncomment the config you need
-vi client/.env.local
-```
 
-#### Server
 
-The server uses its own environment variables too:
+### Lambda functions
 
-```bash
-cp server/.env.example server/.env
+#### RSS Feed Step Function State Machine Lambda functions
+ 
+* **processPodcastRss**: Downloads the RSS file and parses it to determine the episodes to download. This function also leverages Amazon Comprehend's [**entity extraction**](https://docs.aws.amazon.com/comprehend/latest/dg/how-entities.html) feature for 2 use cases:
 
-# edit variables
-vi server/.env
+	* To compute an estimate of the number of speakers in each episode. We do this by using Amazon Comprehend to find people's names in each episode's abstract. We find that many podcast hosts like to mention their guest speakers’ names in the abstract. This helps us later when we use Amazon Transcribe to break out the transcription into multiple speakers. If no names are found in the abstract, we will assume the episode has a single speaker. 
+
+	* To build a domain-specific custom vocabulary list. If a podcast is about AWS, you will hear lots of expressions unique to the specific domain (e.g., EC2, S3) that are completely different from expressions found in a podcast about astronomy (e.g., Milky Way, Hubble). Providing a custom vocabulary list to Amazon Transcribe can help guide the service in identifying an audio segment that sounds like “easy too” to its actual meaning “EC2.” In this blog post, we automatically generate the custom vocabulary list by using the named entities extracted from episode abstracts to make Amazon Transcribe more domain aware. Keep in mind that this approach may not cover all jargon that could appear in the transcripts. To get more accurate transcriptions, you can complement this approach by drafting a list of common domain-specific terms so that you can construct a custom vocabulary list for Amazon Transcribe. 
+
+
+* **createTranscribeVocabulary**: Creates a [**custom vocabulary**](https://docs.aws.amazon.com/transcribe/latest/dg/how-it-works.html#how-vocabulary) for the Amazon Transcribe jobs so it will better understand when an AWS/tech jargon is mentioned. The custom vocabulary is created using the method mentioned above. 
+* **monitorTranscribeVocabulary**: Polls Amazon Transcribe to determine if the custom vocabulary creation has completed.
+* **createElasticsearchIndex**: Creates [**index mappings**](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html) in ElasticSearch
+* **processPodcastItem**: Creates a child state machine execution for each episode while maintaining a maximum of 10 concurrent child processes. This function keeps track of how many processes are active and throttles the downstream calls once the maximum is hit. Amazon S3 is used to store additional state about each episode. 
+* **deleteTranscribeVocabulary**: Cleans up the custom vocabulary after the processing of all episodes is complete. Note that we added this step to minimize artifacts that stay around in your account after you run the demo application. However, when you build your own apps with Amazon Transcribe, you should consider keeping the custom vocabulary around for future processing jobs.
+
+#### Episode Step Function State Machine Lambda functions
+
+* **downloadPodcast**: Downloads the podcast from the publisher and stages it in S3 for further processing.
+* **podcastTranscribe**: Makes the call to Amazon Transcribe to create the transcription job. Notice how we pass in parameters extracted from previous steps, such as the custom vocabulary to use and number of speakers for the episode. 
+* **checkTranscript**: Polls the transcription job for status. Returns the status and the step function will retry of the job is in progress.
+* **processTranscriptionParagraph**: This is the most complicated function in the application. You extract the transcription data from transcribe and break it out into paragraphs. The paragraphs are broken by speaker, punctuation, or a maximum length. The output of this function is a file that contains all the paragraphs in the transcription job as well as the start time of when the phrases was spoken in the audio file and the speaker the paragraph is attributed to.
+* **processTranscriptionFullText**: This function contains similar logic to **processTranscriptionParagraph**, but the output is a full text transcription in a readable format. 
+* **UploadToElasticsearch**: Parses the output of the previous steps and performs a bulk load of the indexes into the Elasticsearch cluster. The connection to Elasticsearch uses a SigV4 signature to perform IAM based authentication into the cluster.
+
+
 ```
                                         
 ## 👩‍🔬 Testing
 
 Test suite is setup with [Jest](https://jestjs.io) and [react-testing-library](https://github.com/kentcdodds/react-testing-library) for unit testing, and [Cypress](https://www.cypress.io) for integration testing.
 
-To run all linting, unit and integration tests in one go, run:
-
-```bash
-npm test
-```
-
-The endpoints the integration tests run against are defined by your [Environment Variables](#️-Environment-Variables), and Cypress-specific variables in `cypress.json`.
-
-### Unit Tests
-
-For local development, you can start the test runners for client & server in a watch mode.
-
-```bash
-npm run test:watch
-```
-
-This will work for daily development but it misses the full interactivity of the test runner. If you need that, you will need to run them in individual terminal sessions:
-
-```bash
-cd client/
-npm run test:watch
-
-cd server/
-npm run test:watch
 ```
 
 ### End-to-End Integration Tests
